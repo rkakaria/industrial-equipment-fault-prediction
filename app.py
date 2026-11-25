@@ -2,7 +2,6 @@ import gradio as gr
 import pandas as pd
 import pickle
 import sklearn
-import gradio as gr
 import json
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -21,10 +20,12 @@ def fault_predictor(v_x, v_y, v_z, al, temp):
         return f"<h1 style = 'text-align: center;'>Machine Status: <span style='color: #f52727;'>{result}</span></h1>"
 
 def visualizer(v_x, v_y, v_z, al, temp, history):
-    vals = [round(float(v_x), 2), round(float(v_y), 2), round(float(v_z), 2), round(float(al), 2), round(float(temp), 2)]
-    history = history + [vals]
+    if v_x and v_y and v_z and al and temp:
+        vals = [round(float(v_x), 2), round(float(v_y), 2), round(float(v_z), 2), round(float(al), 2), round(float(temp), 2)]
+        history = history + [vals]
 
     parameters = ["X Vibration", "Y Vibration", "Z Vibration", "Acoustic Level", "Temperature"]
+
     fig = make_subplots(
         rows = 5,
         cols = 1,
@@ -41,25 +42,32 @@ def visualizer(v_x, v_y, v_z, al, temp, history):
                 y = [row[i - 1] for row in history],
                 mode = "lines+markers",
                 name = name,
-                showlegend=False,
+                showlegend = False,
             ),
-            row=i,
-            col=1,
+            row = i,
+            col = 1,
         )
-        fig.update_yaxes(title_text=name, row=i, col=1)
+        fig.update_yaxes(title_text = name, row = i, col = 1)
 
-    fig.update_xaxes(title_text="Run number", row = len(parameters), col = 1)
+    fig.update_xaxes(title_text = "Run number", row = len(parameters), col = 1, autorange = True)
+
     if len(runs) <= 20:
-        fig.update_xaxes(dtick=1)  # whole-number ticks (auto-spaced beyond 20 runs)
+        fig.update_xaxes(dtick = 1)  #
 
     fig.update_layout(
-        height=800,
-        margin=dict(l=60, r=20, t=20, b=50),
-        hovermode="x unified",  # hover shows all channels for that run
-        template="plotly_white",
+        autosize = True,
+        height = 800,
+        margin = dict(l=60, r=20, t=20, b=50),
+        hovermode = "x unified",  
+        template = "plotly_white",
     )
 
     return fig, history
+
+def render_history(history):
+    # Reuse the visualizer with no new inputs, so it just plots the existing history
+    fig, _ = visualizer("", "", "", "", "", history)
+    return fig
 
 with gr.Blocks() as demo:
     fn = fault_predictor
@@ -76,7 +84,7 @@ with gr.Blocks() as demo:
                     y = gr.Textbox(label = 'Vibration - Y (Normalized)', info = 'Between 0 - 1.3') 
                     z = gr.Textbox(label = 'Vibration - Z (Normalized)', info = 'Between 0 - 1.3') 
                     acoustic = gr.Textbox(label = 'Acoustic Level - dB', info = 'Between 10 - 110') 
-                    temp = gr.Textbox(label = 'Temperature - ºC)', info = 'Between 50 - 110') # units are extrapolated
+                    temp = gr.Textbox(label = 'Temperature - ºC', info = 'Between 50 - 110') # units are extrapolated
 
                     with gr.Row():
                         submit = gr.Button("Submit", variant="primary")
@@ -92,10 +100,14 @@ with gr.Blocks() as demo:
             
             submit.click(fn = fault_predictor, inputs = [x, y, z, acoustic, temp], outputs = output, api_name = "predict")
 
-        with gr.Tab("Vizualize"):
-            history = gr.BrowserState([])
-            plot = gr.Plot()
+        with gr.Tab("Visualize") as tab:
+            with gr.Column():
+                gr.Markdown("## Your Machine History")
+                history = gr.BrowserState([])
+                plot = gr.Plot()
 
-            submit.click(fn = visualizer, inputs = [x, y, z, acoustic, temp, history], outputs = [plot, history])
+                submit.click(fn = visualizer, inputs = [x, y, z, acoustic, temp, history], outputs = [plot, history])
     
+        tab.select(fn=lambda: None, outputs=plot).then(fn=render_history, inputs=history, outputs=plot)
+            
 demo.launch(theme = gr.themes.Ocean())
