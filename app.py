@@ -3,6 +3,7 @@ import pandas as pd
 import pickle
 import sklearn
 import gradio as gr
+import matplotlib.pyplot as plt
 
 if gr.NO_RELOAD:
     model = pickle.load(open('./model/model.sav', 'rb'))
@@ -12,15 +13,15 @@ def fault_predictor(v_x, v_y, v_z, al, temp):
     x = pd.DataFrame([[v_x, v_y, v_z, al, temp]], columns = columns)
     result = str(model.predict(x))[2:-2]
 
-    if result == "Normal":
-        return f"## Machine Status: <span style='color: #10b981;'>{result}</span>"
+    if result == "Normal": 
+        return f"<h1 style = 'text-align: center;'>Machine Status: <span style='color: #10b981;'>{result}</span></h1>"
     else:
-        return f"## Machine Status: <span style='color: #f52727;'>{result}</span>"
+        return f"<h1 style = 'text-align: center;'>Machine Status: <span style='color: #f52727;'>{result}</span></h1>"
 
 with gr.Blocks() as demo:
     fn = fault_predictor
 
-    title = gr.Markdown("# Rotating Industrial Equipment Fault Prediction")
+    title = gr.Markdown("<h1 style = 'text-align: center; font-size: 40px'>Rotating Industrial Equipment Fault Prediction</h1>")
 
     with gr.Row():
         with gr.Column():
@@ -42,7 +43,10 @@ with gr.Blocks() as demo:
                 examples = gr.Examples(examples = "examples", inputs = [x, y, z, acoustic, temp], examples_per_page = 9)
             
     with gr.Row():
-        output = gr.Markdown()
+        output = gr.Markdown("<h1 style = 'text-align: center;'>Machine Status: Undetermined</h1>")
+    
+    # with gr.Column():
+
 
     submit.click(fn = fault_predictor, inputs = [x, y, z, acoustic, temp], outputs = output, api_name = "predict")
 
